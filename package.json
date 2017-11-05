@@ -1,0 +1,11 @@
+{
+  "name": "jay",
+  "version": "0.0.0",
+  "description": "Theme manager for gatsby-theme-kit",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Steven Natera",
+  "license": "MIT"
+}
