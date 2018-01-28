@@ -60,15 +60,15 @@ const addThemeHandler = (argv) => {
 
 const mountThemeHandler = (argv) => {
   const themeName = argv.name;
-  const themeDir = path.join(__dirname, `themes`, `${themeName}`);
-  const target = path.join(__dirname, `src`);
+  const themeDir = path.join(`./`, `themes`, `${themeName}`);
+  const target = path.join(`./`, `src`);
   move(themeDir, target);
 }
 
 const unmountThemeHandler = (argv) => {
   const themeName = argv.name;
-  const themeDir = path.join(__dirname, `themes`, `${themeName}`);
-  const target = path.join(__dirname, `src`);
+  const themeDir = path.join(`./`, `themes`, `${themeName}`);
+  const target = path.join(`./`, `src`);
   move(target, themeDir);
 }
 
