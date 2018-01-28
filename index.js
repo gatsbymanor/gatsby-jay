@@ -43,7 +43,7 @@ const remove = async (name, sysPath) => {
 
 const addThemeHandler = (argv) => {
   const themeName = argv.name;
-  const themePagesDir = path.join(__dirname, `themes`, `${themeName}`);
+  const themePagesDir = path.join(`./`, `themes`, `${themeName}`);
 
   fs.ensureDir(themePagesDir)
     .then(() => {
