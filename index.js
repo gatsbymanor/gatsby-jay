@@ -6,6 +6,11 @@ var execa = require('execa');
 
 const themeCollection = [
   'massively',
+  'lens',
+  'photon',
+  'tessellate',
+  'dimension',
+  'identity',
 ];
 
 const spawn = (cmd) => {
