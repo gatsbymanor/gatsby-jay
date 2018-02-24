@@ -1,25 +1,16 @@
 #!/usr/bin/env node
-var fs = require('fs-extra');
-var path = require('path');
-var yargs = require('yargs');
-var execa = require('execa');
-
-const themeCollection = [
-  'massively',
-  'lens',
-  'photon',
-  'tessellate',
-  'dimension',
-  'identity',
-];
+const fs = require('fs-extra');
+const path = require('path');
+const yargs = require('yargs');
+const execa = require('execa');
+const registry = require('gatsby-jay-registry');
 
 const spawn = (cmd) => {
   const [file, ...args] = cmd.split(/\s+/)
   return execa(file, args, { stdio: `inherit` })
 }
 
-const clone = async (name, sysPath) => {
-  const url = `https://github.com/gatsbymanor/gatsby-theme-${name}.git`;
+const clone = async (url, sysPath) => {
   await spawn(`git clone ${url} ${sysPath}`);
 
   await fs.remove(path.join(sysPath, `.git`));
@@ -46,21 +37,18 @@ const remove = async (name, sysPath) => {
   console.log(`${name} theme has been removed.`);
 }
 
-const addThemeHandler = (argv) => {
-  const themeName = argv.name;
-  const themePagesDir = path.join(`./`, `themes`, `${themeName}`);
+const addThemeHandler = async ({name}) => {
+  const theme = registry.find(theme => theme.name === name);
 
-  fs.ensureDir(themePagesDir)
-    .then(() => {
-      clone(themeName, themePagesDir);
-    }).catch(err => {
-      if (err) {
-        console.log('Error: ', err);
-        console.log('Makes sure you spelled the theme correctly.');
-        return;
-      }
-    });
+  if (theme) {
+    const themePagesDir = path.join(`./`, `themes`, `${name}`);
 
+    await fs.ensureDir(themePagesDir);
+    await clone(theme.url, themePagesDir);
+    // bootstrapping has to happen then
+  } else {
+    console.log(`${name} not found in the registry`);
+  }
 }
 
 const mountThemeHandler = (argv) => {
@@ -77,11 +65,17 @@ const unmountThemeHandler = (argv) => {
   move(target, themeDir);
 }
 
-
 const listThemesHandler = (argv) => {
-  const themeName = argv.name;
-  themeCollection.map(theme => {
-    console.log(theme);
+  registry.map(theme => {
+    console.log(
+      `
+  ${theme.name}
+  ${theme.description}
+
+  Available content sources:
+  ${theme.contentSources.map(source => ` - ${source}`)}
+      `
+    )
   });
 }
 
