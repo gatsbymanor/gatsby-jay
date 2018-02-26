@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-var fs = require('fs-extra');
-var path = require('path');
-var yargs = require('yargs');
-var execa = require('execa');
+const fs = require('fs-extra');
+const path = require('path');
+const yargs = require('yargs');
+const execa = require('execa');
+const config = require('./jay-config');
 
 const themeCollection = [
   'massively',
@@ -41,9 +42,13 @@ const move = async (src, dest) => {
   }
 }
 
-const remove = async (name, sysPath) => {
-  await fs.remove(sysPath);
-  console.log(`${name} theme has been removed.`);
+const remove = async (sysPath) => {
+  try {
+    await fs.remove(sysPath);
+  } catch (err) {
+    console.log(`Error: ${sysPath} NOT removed.`);
+    console.log(`Error: ${err}`);
+  }
 }
 
 const addThemeHandler = (argv) => {
@@ -60,7 +65,6 @@ const addThemeHandler = (argv) => {
         return;
       }
     });
-
 }
 
 const mountThemeHandler = (argv) => {
@@ -77,7 +81,6 @@ const unmountThemeHandler = (argv) => {
   move(target, themeDir);
 }
 
-
 const listThemesHandler = (argv) => {
   const themeName = argv.name;
   themeCollection.map(theme => {
@@ -85,7 +88,66 @@ const listThemesHandler = (argv) => {
   });
 }
 
+const installPackages = async (dependencies, flags = '') => {
+  let packages = [];
+  Object.keys(dependencies).forEach((item) => {
+    let entry = dependencies[item];
+    packages = [...packages, ...entry];
+  });
+
+  packages = packages.join(' ');
+  await spawn(`yarnpkg add ${flags} ${packages}`);
+}
+
+const changeCurrentWorkingDirToNewProject = async (projectPath) => {
+  await process.chdir(path.join(process.cwd(), `${projectPath}`));
+}
+
+const copyBootstrapFiles = () => {
+  const targetDir = path.join(process.cwd());
+  const gatsbyJayTestFolderPath = path.join(__dirname, 'bootstrap');
+  copy(gatsbyJayTestFolderPath, targetDir);
+}
+
+
+const removeDefaultGatsbyFiles = () => {
+  remove(path.join(process.cwd(), 'gatsby-config.js'));
+  remove(path.join(process.cwd(), 'gatsby-node.js'));
+}
+
+const createNewGatsbyProject = async (name) => {
+  try {
+    await spawn(`gatsby new ${name}`);
+  } catch (e) {
+    console.log(`Error on create. Did you install gatsby-cli?`);
+    console.log(`Try 'yarn global add gatsby-cli'`);
+  }
+}
+
+const initThemeHandler = async (argv) => {
+  try {
+    await createNewGatsbyProject(argv.name);
+
+    await changeCurrentWorkingDirToNewProject(argv.name);
+    await removeDefaultGatsbyFiles();
+
+    await installPackages(config.devDependencies, '--dev');
+    await installPackages(config.prodDependencies);
+
+    await copyBootstrapFiles();
+
+  } catch (err) {
+    console.log('Error with initThemeHandler.');
+  }
+}
+
 yargs
+  .command({
+    command: 'init <name>',
+    aliases: [],
+    desc: 'Start a new theme enabled Gatsby project',
+    handler: initThemeHandler
+  })
   .command({
     command: 'add <name>',
     aliases: [],
