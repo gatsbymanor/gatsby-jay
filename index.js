@@ -3,7 +3,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const yargs = require('yargs');
 const execa = require('execa');
-const config = require('./jay-config');
+const themesDependenciesPromise = require('./themes-dependencies');
 
 const themeCollection = [
   'massively',
@@ -12,11 +12,12 @@ const themeCollection = [
   'tessellate',
   'dimension',
   'identity',
+  'stellar',
 ];
 
-const spawn = (cmd) => {
+const spawn = (cmd, options = {}) => {
   const [file, ...args] = cmd.split(/\s+/)
-  return execa(file, args, { stdio: `inherit` })
+  return execa(file, args, options)
 }
 
 const clone = async (name, version, sysPath) => {
@@ -51,7 +52,7 @@ const remove = async (sysPath) => {
   }
 }
 
-const addThemeHandler = (argv) => {
+const addThemeHandler = async (argv) => {
   const themeName = argv.name;
   const themePagesDir = path.join(`./`, `themes`, `${themeName}`);
 
@@ -67,18 +68,36 @@ const addThemeHandler = (argv) => {
     });
 }
 
-const mountThemeHandler = (argv) => {
-  const themeName = argv.name;
-  const themeDir = path.join(`./`, `themes`, `${themeName}`);
-  const target = path.join(`./`, `src`);
-  move(themeDir, target);
+  try {
+    await fs.ensureDir(themePagesDir)
+    clone(themeName, "0.2.0", themePagesDir);
+  } catch (e) {
+    console.log('Error: ', err);
+    console.log('Makes sure you spelled the theme correctly.');
+  }
 }
 
-const unmountThemeHandler = (argv) => {
+// Follows a singleton pattern
+const mountThemeHandler = async (argv) => {
   const themeName = argv.name;
-  const themeDir = path.join(`./`, `themes`, `${themeName}`);
-  const target = path.join(`./`, `src`);
-  move(target, themeDir);
+  const targetThemePath = path.join(process.cwd(), `themes`, themeName);
+
+  try {
+    const exists = await fs.exists(targetThemePath)
+
+    if (exists) {
+      let targetProjectJayConfigPath = path.join(process.cwd(), `jay.json`);
+      let targetProjectJayConfig = require(targetProjectJayConfigPath);
+      targetProjectJayConfig.theme.name = themeName;
+      writeJsonToFile(targetProjectJayConfigPath, targetProjectJayConfig, { spaceDelimiter: '  ' });
+
+    } else {
+      console.log('ErrorThe theme cannot be found. Did you add the theme to your project?');
+    }
+  } catch (e) {
+    console.log('Could not find the file path in questions. jay.json might be missing.');
+    console.log(e);
+  }
 }
 
 const listThemesHandler = (argv) => {
@@ -88,56 +107,68 @@ const listThemesHandler = (argv) => {
   });
 }
 
-const installPackages = async (dependencies, flags = '') => {
-  let packages = [];
-  Object.keys(dependencies).forEach((item) => {
-    let entry = dependencies[item];
-    packages = [...packages, ...entry];
-  });
-
-  packages = packages.join(' ');
-  await spawn(`yarnpkg add ${flags} ${packages}`);
-}
-
-const changeCurrentWorkingDirToNewProject = async (projectPath) => {
-  await process.chdir(path.join(process.cwd(), `${projectPath}`));
-}
-
-const copyBootstrapFiles = () => {
-  const targetDir = path.join(process.cwd());
+const copyBootstrapFiles = (targetDir) => {
   const gatsbyJayTestFolderPath = path.join(__dirname, 'bootstrap');
   copy(gatsbyJayTestFolderPath, targetDir);
 }
 
-
-const removeDefaultGatsbyFiles = () => {
-  remove(path.join(process.cwd(), 'gatsby-config.js'));
-  remove(path.join(process.cwd(), 'gatsby-node.js'));
+const removeDefaultGatsbyFiles = (projectDir) => {
+  const srcFolder = path.join(projectDir, `src`);
+  remove(srcFolder)
 }
 
 const createNewGatsbyProject = async (name) => {
   try {
-    await spawn(`gatsby new ${name}`);
+    await spawn(`gatsby new ${name}`, { stdio: `inherit` });
   } catch (e) {
     console.log(`Error on create. Did you install gatsby-cli?`);
     console.log(`Try 'yarn global add gatsby-cli'`);
   }
 }
 
+const writeJsonToFile = async (filePath, jsonObject, options = {}) => {
+  try {
+    await fs.writeJson(filePath, jsonObject, {
+      spaces: options.spaceDelimiter
+    });
+  } catch (e) {
+    console.log('Problem writing json to file: ', e);
+  }
+}
+
+const installThemeSystemDependencies = async (projectPath) => {
+  try {
+    let currentWorkingDir = process.cwd();
+    let themesSystemDependencies = await themesDependenciesPromise(projectPath);
+
+    writeJsonToFile(path.join(projectPath, `package.json`), themesSystemDependencies, { spaceDelimiter: '  ' });
+
+    await process.chdir(`${projectPath}`);
+
+    await spawn(`yarnpkg`, { stdio: `inherit` });
+
+    await process.chdir(currentWorkingDir);
+
+
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+
 const initThemeHandler = async (argv) => {
+  let projectName = argv.name;
+  let targetProjectPath = path.join(process.cwd(), projectName);
+
   try {
     await createNewGatsbyProject(argv.name);
 
-    await changeCurrentWorkingDirToNewProject(argv.name);
-    await removeDefaultGatsbyFiles();
-
-    await installPackages(config.devDependencies, '--dev');
-    await installPackages(config.prodDependencies);
-
-    await copyBootstrapFiles();
+    removeDefaultGatsbyFiles(targetProjectPath);
+    copyBootstrapFiles(targetProjectPath);
+    installThemeSystemDependencies(targetProjectPath);
 
   } catch (err) {
-    console.log('Error with initThemeHandler.');
+    console.log('Error with initThemeHandler.', err);
   }
 }
 
@@ -159,18 +190,6 @@ yargs
     aliases: [],
     desc: 'Use <name> as the default theme. Moves theme to src/pages',
     handler: mountThemeHandler
-  })
-  .command({
-    command: 'unmount <name>',
-    aliases: [],
-    desc: 'Unmount <name> as the default theme. Moves theme to themes/',
-    handler: unmountThemeHandler
-  })
-  .command({
-    command: 'update <name>',
-    aliases: [],
-    desc: 'Update <name> from Github. Coming soon.',
-    handler: (argv) => {}
   })
   .command({
     command: 'list',
