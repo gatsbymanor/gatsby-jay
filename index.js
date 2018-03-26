@@ -56,18 +56,6 @@ const addThemeHandler = async (argv) => {
   const themeName = argv.name;
   const themePagesDir = path.join(`./`, `themes`, `${themeName}`);
 
-  fs.ensureDir(themePagesDir)
-    .then(() => {
-      clone(themeName, "0.1.0", themePagesDir);
-    }).catch(err => {
-      if (err) {
-        console.log('Error: ', err);
-        console.log('Makes sure you spelled the theme correctly.');
-        return;
-      }
-    });
-}
-
   try {
     await fs.ensureDir(themePagesDir)
     clone(themeName, "0.2.0", themePagesDir);
@@ -148,7 +136,6 @@ const installThemeSystemDependencies = async (projectPath) => {
     await spawn(`yarnpkg`, { stdio: `inherit` });
 
     await process.chdir(currentWorkingDir);
-
 
   } catch (e) {
     console.log(e);
