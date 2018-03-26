@@ -19,9 +19,9 @@ const spawn = (cmd) => {
   return execa(file, args, { stdio: `inherit` })
 }
 
-const clone = async (name, sysPath) => {
+const clone = async (name, version, sysPath) => {
   const url = `https://github.com/gatsbymanor/gatsby-theme-${name}.git`;
-  await spawn(`git clone ${url} ${sysPath}`);
+  await spawn(`git clone -b ${version} ${url} ${sysPath}`);
 
   await fs.remove(path.join(sysPath, `.git`));
 }
@@ -57,7 +57,7 @@ const addThemeHandler = (argv) => {
 
   fs.ensureDir(themePagesDir)
     .then(() => {
-      clone(themeName, themePagesDir);
+      clone(themeName, "0.1.0", themePagesDir);
     }).catch(err => {
       if (err) {
         console.log('Error: ', err);
