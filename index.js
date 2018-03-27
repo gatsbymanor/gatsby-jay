@@ -59,6 +59,7 @@ const addThemeHandler = async (argv) => {
   try {
     await fs.ensureDir(themePagesDir)
     clone(themeName, "0.2.0", themePagesDir);
+    console.log('Theme successfully added to project.');
   } catch (e) {
     console.log('Error: ', err);
     console.log('Makes sure you spelled the theme correctly.');
@@ -78,10 +79,12 @@ const mountThemeHandler = async (argv) => {
       let targetProjectJayConfig = require(targetProjectJayConfigPath);
       targetProjectJayConfig.theme.name = themeName;
       writeJsonToFile(targetProjectJayConfigPath, targetProjectJayConfig, { spaceDelimiter: '  ' });
+      console.log('Theme successfully mounted as the default theme.');
 
     } else {
       console.log('ErrorThe theme cannot be found. Did you add the theme to your project?');
     }
+
   } catch (e) {
     console.log('Could not find the file path in questions. jay.json might be missing.');
     console.log(e);
