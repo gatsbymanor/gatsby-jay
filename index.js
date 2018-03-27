@@ -95,9 +95,14 @@ const listThemesHandler = (argv) => {
   });
 }
 
-const copyBootstrapFiles = (targetDir) => {
+const copyBootstrapFiles = async (targetDir) => {
   const gatsbyJayTestFolderPath = path.join(__dirname, 'bootstrap');
-  copy(gatsbyJayTestFolderPath, targetDir);
+  try {
+    await copy(gatsbyJayTestFolderPath, targetDir);
+  } catch (e) {
+    console.log(e.message);
+    console.log('Could not bootstrap project. Please report issue.');
+  }
 }
 
 const removeDefaultGatsbyFiles = (projectDir) => {
